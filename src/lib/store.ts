@@ -1,13 +1,13 @@
-import { create } from 'zustand';
+import create from 'zustand';
 
 interface ThemeState {
   isDarkMode: boolean;
   toggleDarkMode: () => void;
 }
 
-export const useThemeStore = create<ThemeState>((set) => ({
+export const useThemeStore = create<ThemeState>((set: any) => ({
   isDarkMode: false,
-  toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
+  toggleDarkMode: () => set((state: ThemeState) => ({ isDarkMode: !state.isDarkMode })),
 }));
 
 interface UserState {
@@ -17,11 +17,11 @@ interface UserState {
   toggleSidebar: () => void;
 }
 
-export const useUserStore = create<UserState>((set) => ({
+export const useUserStore = create<UserState>((set: any) => ({
   language: 'en',
-  setLanguage: (language) => set({ language }),
+  setLanguage: (language: 'en' | 'es' | 'fr') => set({ language }),
   sidebarCollapsed: false,
-  toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+  toggleSidebar: () => set((state: UserState) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 }));
 
 interface Client {
@@ -68,12 +68,12 @@ const fakeClients: Client[] = [
   },
 ];
 
-export const useClientsStore = create<ClientsState>((set) => ({
+export const useClientsStore = create<ClientsState>((set: any) => ({
   clients: fakeClients,
   searchQuery: '',
-  setSearchQuery: (query) => set({ searchQuery: query }),
-  addClient: (client) =>
-    set((state) => ({
+  setSearchQuery: (query: string) => set({ searchQuery: query }),
+  addClient: (client: Omit<Client, 'id' | 'createdAt'>) =>
+    set((state: ClientsState) => ({
       clients: [
         ...state.clients,
         {
@@ -83,8 +83,8 @@ export const useClientsStore = create<ClientsState>((set) => ({
         },
       ],
     })),
-  updateClient: (id, updatedClient) =>
-    set((state) => ({
+  updateClient: (id: string, updatedClient: Partial<Client>) =>
+    set((state: ClientsState) => ({
       clients: state.clients.map((client) =>
         client.id === id ? { ...client, ...updatedClient } : client
       ),
@@ -196,7 +196,7 @@ const fakeTickets: Ticket[] = [
   },
 ];
 
-export const useTicketsStore = create<TicketsState>((set) => ({
+export const useTicketsStore = create<TicketsState>((set: any) => ({
   tickets: fakeTickets,
   settings: {
     deviceTypes: ['Mobile', 'Tablet', 'PC', 'Console'],
@@ -208,9 +208,9 @@ export const useTicketsStore = create<TicketsState>((set) => ({
     tasks: ['Battery', 'Screen', 'Motherboard', 'Software', 'Camera', 'Speaker'],
   },
   filterStatus: 'all',
-  setFilterStatus: (status) => set({ filterStatus: status }),
-  addTicket: (ticket) =>
-    set((state) => ({
+  setFilterStatus: (status: 'all' | 'pending' | 'in-progress' | 'completed') => set({ filterStatus: status }),
+  addTicket: (ticket: Omit<Ticket, 'id' | 'ticketNumber' | 'createdAt' | 'updatedAt'>) =>
+    set((state: TicketsState) => ({
       tickets: [
         ...state.tickets,
         {
@@ -222,8 +222,8 @@ export const useTicketsStore = create<TicketsState>((set) => ({
         },
       ],
     })),
-  updateTicket: (id, updatedTicket) =>
-    set((state) => ({
+  updateTicket: (id: string, updatedTicket: Partial<Ticket>) =>
+    set((state: TicketsState) => ({
       tickets: state.tickets.map((ticket) =>
         ticket.id === id
           ? {
@@ -234,22 +234,22 @@ export const useTicketsStore = create<TicketsState>((set) => ({
           : ticket
       ),
     })),
-  addDeviceType: (type) =>
-    set((state) => ({
+  addDeviceType: (type: string) =>
+    set((state: TicketsState) => ({
       settings: {
         ...state.settings,
         deviceTypes: [...state.settings.deviceTypes, type],
       },
     })),
-  removeDeviceType: (type) =>
-    set((state) => ({
+  removeDeviceType: (type: string) =>
+    set((state: TicketsState) => ({
       settings: {
         ...state.settings,
         deviceTypes: state.settings.deviceTypes.filter((t) => t !== type),
       },
     })),
-  updateDeviceType: (oldType, newType) =>
-    set((state) => ({
+  updateDeviceType: (oldType: string, newType: string) =>
+    set((state: TicketsState) => ({
       settings: {
         ...state.settings,
         deviceTypes: state.settings.deviceTypes.map((t) =>
@@ -257,23 +257,23 @@ export const useTicketsStore = create<TicketsState>((set) => ({
         ),
       },
     })),
-  addBrand: (brand) =>
-    set((state) => ({
+  addBrand: (brand: string) =>
+    set((state: TicketsState) => ({
       settings: {
         ...state.settings,
         brands: [...state.settings.brands, brand],
       },
     })),
-  removeBrand: (brand) =>
-    set((state) => ({
+  removeBrand: (brand: string) =>
+    set((state: TicketsState) => ({
       settings: {
         ...state.settings,
         brands: state.settings.brands.filter((b) => b !== brand),
         models: state.settings.models.filter((m) => m.brandId !== brand),
       },
     })),
-  updateBrand: (oldBrand, newBrand) =>
-    set((state) => ({
+  updateBrand: (oldBrand: string, newBrand: string) =>
+    set((state: TicketsState) => ({
       settings: {
         ...state.settings,
         brands: state.settings.brands.map((b) =>
@@ -284,8 +284,8 @@ export const useTicketsStore = create<TicketsState>((set) => ({
         ),
       },
     })),
-  addModel: (model) =>
-    set((state) => ({
+  addModel: (model: { name: string; brandId: string }) =>
+    set((state: TicketsState) => ({
       settings: {
         ...state.settings,
         models: [
@@ -294,15 +294,15 @@ export const useTicketsStore = create<TicketsState>((set) => ({
         ],
       },
     })),
-  removeModel: (modelId) =>
-    set((state) => ({
+  removeModel: (modelId: string) =>
+    set((state: TicketsState) => ({
       settings: {
         ...state.settings,
         models: state.settings.models.filter((m) => m.id !== modelId),
       },
     })),
-  updateModel: (modelId, name) =>
-    set((state) => ({
+  updateModel: (modelId: string, name: string) =>
+    set((state: TicketsState) => ({
       settings: {
         ...state.settings,
         models: state.settings.models.map((m) =>
@@ -310,22 +310,22 @@ export const useTicketsStore = create<TicketsState>((set) => ({
         ),
       },
     })),
-  addTask: (task) =>
-    set((state) => ({
+  addTask: (task: string) =>
+    set((state: TicketsState) => ({
       settings: {
         ...state.settings,
         tasks: [...state.settings.tasks, task],
       },
     })),
-  removeTask: (task) =>
-    set((state) => ({
+  removeTask: (task: string) =>
+    set((state: TicketsState) => ({
       settings: {
         ...state.settings,
         tasks: state.settings.tasks.filter((t) => t !== task),
       },
     })),
-  updateTask: (oldTask, newTask) =>
-    set((state) => ({
+  updateTask: (oldTask: string, newTask: string) =>
+    set((state: TicketsState) => ({
       settings: {
         ...state.settings,
         tasks: state.settings.tasks.map((t) =>
@@ -391,15 +391,15 @@ const fakeProducts: Product[] = [
   },
 ];
 
-export const useProductsStore = create<ProductsState>((set) => ({
+export const useProductsStore = create<ProductsState>((set: any) => ({
   products: fakeProducts,
   categories: ['Phones', 'Tablets', 'Laptops', 'Accessories'],
   searchQuery: '',
   selectedCategory: 'all',
-  setSearchQuery: (query) => set({ searchQuery: query }),
-  setSelectedCategory: (category) => set({ selectedCategory: category }),
-  addProduct: (product) =>
-    set((state) => ({
+  setSearchQuery: (query: string) => set({ searchQuery: query }),
+  setSelectedCategory: (category: string) => set({ selectedCategory: category }),
+  addProduct: (product: Omit<Product, 'id'>) =>
+    set((state: ProductsState) => ({
       products: [
         ...state.products,
         {
@@ -408,14 +408,14 @@ export const useProductsStore = create<ProductsState>((set) => ({
         },
       ],
     })),
-  updateProduct: (id, updatedProduct) =>
-    set((state) => ({
+  updateProduct: (id: string, updatedProduct: Partial<Product>) =>
+    set((state: ProductsState) => ({
       products: state.products.map((product) =>
         product.id === id ? { ...product, ...updatedProduct } : product
       ),
     })),
-  updateStock: (id, quantity) =>
-    set((state) => ({
+  updateStock: (id: string, quantity: number) =>
+    set((state: ProductsState) => ({
       products: state.products.map((product) =>
         product.id === id
           ? { ...product, stock: product.stock + quantity }
@@ -475,23 +475,23 @@ const fakeOrders: Order[] = [
   },
 ];
 
-export const useOrdersStore = create<OrdersState>((set) => ({
+export const useOrdersStore = create<OrdersState>((set: any) => ({
   orders: fakeOrders,
   cart: [],
-  addToCart: (productId, quantity) =>
-    set((state) => ({
+  addToCart: (productId: string, quantity: number) =>
+    set((state: OrdersState) => ({
       cart: [
         ...state.cart.filter((item) => item.productId !== productId),
         { productId, quantity },
       ],
     })),
-  removeFromCart: (productId) =>
-    set((state) => ({
+  removeFromCart: (productId: string) =>
+    set((state: OrdersState) => ({
       cart: state.cart.filter((item) => item.productId !== productId),
     })),
   clearCart: () => set({ cart: [] }),
-  createOrder: (clientId, total) =>
-    set((state) => ({
+  createOrder: (clientId: string, total: number) =>
+    set((state: OrdersState) => ({
       orders: [
         ...state.orders,
         {
@@ -505,10 +505,103 @@ export const useOrdersStore = create<OrdersState>((set) => ({
       ],
       cart: [],
     })),
-  updateOrderStatus: (orderId, status) =>
-    set((state) => ({
+  updateOrderStatus: (orderId: string, status: Order['status']) =>
+    set((state: OrdersState) => ({
       orders: state.orders.map((order) =>
         order.id === orderId ? { ...order, status } : order
+      ),
+    })),
+}));
+
+interface InvoiceItem {
+  id: string;
+  name: string;
+  quantity: number;
+  price: number;
+}
+
+interface Invoice {
+  id: string;
+  invoiceNumber: string;
+  date: string;
+  clientId: string;
+  items: InvoiceItem[];
+  subtotal: number;
+  tax: number;
+  total: number;
+  status: 'pending' | 'completed' | 'cancelled';
+  createdAt: string;
+}
+
+interface InvoicesState {
+  invoices: Invoice[];
+  addInvoice: (invoice: Omit<Invoice, 'id' | 'invoiceNumber' | 'createdAt'>) => void;
+  updateInvoice: (id: string, invoice: Partial<Invoice>) => void;
+  updateInvoiceStatus: (invoiceId: string, status: Invoice['status']) => void;
+}
+
+const generateInvoiceNumber = () => {
+  const month = new Date().toLocaleString('en-US', { month: 'short' }).toLowerCase();
+  const randomNum = Math.floor(1000 + Math.random() * 9000);
+  return `${month}${randomNum}`;
+};
+
+const fakeInvoices: Invoice[] = [
+  {
+    id: '1',
+    invoiceNumber: 'nov1234',
+    clientId: '1',
+    date: new Date().toISOString(),
+    items: [
+      { id: '1', name: 'Product 1', quantity: 1, price: 100 },
+      { id: '2', name: 'Product 2', quantity: 2, price: 50 },
+    ],
+    subtotal: 200,
+    tax: 40,
+    total: 240,
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: '2',
+    invoiceNumber: 'nov5678',
+    clientId: '2',
+    date: new Date().toISOString(),
+    items: [
+      { id: '3', name: 'Product 3', quantity: 1, price: 200 },
+    ],
+    subtotal: 200,
+    tax: 40,
+    total: 240,
+    status: 'completed',
+    createdAt: new Date().toISOString(),
+  },
+];
+
+export const useInvoicesStore = create<InvoicesState>((set: any) => ({
+  invoices: fakeInvoices,
+  addInvoice: (invoice: Omit<Invoice, 'id' | 'invoiceNumber' | 'createdAt'>) =>
+    set((state: InvoicesState) => ({
+      invoices: [
+        ...state.invoices,
+        {
+          ...invoice,
+          id: Math.random().toString(36).substr(2, 9),
+          invoiceNumber: generateInvoiceNumber(),
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    })),
+  updateInvoice: (id: string, updatedInvoice: Partial<Invoice>) =>
+    set((state: InvoicesState) => ({
+      invoices: state.invoices.map((invoice) =>
+        invoice.id === id ? { ...invoice, ...updatedInvoice } : invoice
+      ),
+    })),
+  updateInvoiceStatus: (invoiceId: string, status: Invoice['status']) =>
+    set((state: InvoicesState) => ({
+      invoices: state.invoices.map((invoice) =>
+        invoice.id === invoiceId ? { ...invoice, status } : invoice
       ),
     })),
 }));
