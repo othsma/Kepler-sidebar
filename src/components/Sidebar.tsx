@@ -20,12 +20,16 @@ const navigation = [
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  isCollapsed: boolean;
+  toggleSidebar: () => void;
+}
+
+export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({
     'POS': true // Default expanded
   });
-  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const toggleExpand = (name: string) => {
     setExpandedItems(prev => ({
@@ -34,14 +38,12 @@ export default function Sidebar() {
     }));
   };
 
-  const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed);
-  };
-
   return (
-    <div className={`fixed inset-y-0 z-50 flex flex-col transition-all duration-300 ${
-      isDarkMode ? 'bg-gray-800' : 'bg-white'
-    } ${isCollapsed ? 'w-20' : 'w-72'}`}>
+    <div 
+      className={`fixed inset-y-0 left-0 z-50 flex flex-col transition-all duration-300 ${
+        isDarkMode ? 'bg-gray-800' : 'bg-white'
+      } shadow-lg ${isCollapsed ? 'w-20' : 'w-72'}`}
+    >
       <div className="flex h-16 shrink-0 items-center px-6">
         <Wrench className="h-8 w-8 text-indigo-600" />
         {!isCollapsed && <span className="ml-4 text-xl font-semibold">TechFix Pro</span>}
@@ -71,8 +73,8 @@ export default function Sidebar() {
                   onClick={() => toggleExpand(item.name)}
                 >
                   <div className="flex items-center">
-                    <item.icon className="h-5 w-5 mr-3" />
-                    {!isCollapsed && item.name}
+                    <item.icon className="h-5 w-5 min-w-5" />
+                    {!isCollapsed && <span className="ml-3">{item.name}</span>}
                   </div>
                   {!isCollapsed && (
                     expandedItems[item.name] ? (
@@ -115,8 +117,8 @@ export default function Sidebar() {
                 }
                 end
               >
-                <item.icon className="h-5 w-5 mr-3" />
-                {!isCollapsed && item.name}
+                <item.icon className="h-5 w-5 min-w-5" />
+                {!isCollapsed && <span className="ml-3">{item.name}</span>}
               </NavLink>
             )}
           </div>
