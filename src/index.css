@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .receipt-content, .receipt-content * {
+    visibility: visible;
+  }
+  .receipt-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  .no-print {
+    display: none;
+  }
+}
+
+/* Thermal receipt styles */
+@media print {
+  @page {
+    size: 80mm 297mm;
+    margin: 0;
+  }
+  
+  .receipt-content {
+    width: 80mm;
+    padding: 5mm;
+    font-family: 'Courier New', Courier, monospace;
+  }
+}
+
+/* A4 invoice styles */
+@media print {
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+  
+  .invoice-content {
+    width: 210mm;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* POS specific styles */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.payment-method-button {
+  @apply flex items-center justify-center gap-2 p-3 rounded-md transition-colors;
+}
+
+.payment-method-button.active {
+  @apply bg-indigo-600 text-white;
+}
+
+.payment-method-button:not(.active) {
+  @apply bg-gray-100 text-gray-700 hover:bg-gray-200;
+}
