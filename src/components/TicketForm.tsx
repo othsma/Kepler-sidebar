@@ -61,10 +61,14 @@ export default function TicketForm({ clientId, onSubmit, onCancel, editingTicket
       updateTicket(editingTicket, { ...formData, clientId });
       onSubmit('');
     } else {
-      const ticket = { ...formData, clientId: clientId!, technicianId: '' };
-      addTicket(ticket);
-      const newTicket = useTicketsStore.getState().tickets[useTicketsStore.getState().tickets.length - 1];
-      onSubmit(newTicket.ticketNumber);
+      if (!clientId) {
+        alert('Please select a client first');
+        return;
+      }
+      
+      const ticket = { ...formData, clientId, technicianId: '' };
+      const newTicketNumber = addTicket(ticket);
+      onSubmit(newTicketNumber);
     }
   };
 

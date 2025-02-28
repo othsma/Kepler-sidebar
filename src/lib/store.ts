@@ -124,7 +124,7 @@ interface Ticket {
 interface TicketsState {
   tickets: Ticket[];
   settings: TicketSettings;
-  addTicket: (ticket: Omit<Ticket, 'id' | 'ticketNumber' | 'createdAt' | 'updatedAt'>) => void;
+  addTicket: (ticket: Omit<Ticket, 'id' | 'ticketNumber' | 'createdAt' | 'updatedAt'>) => string;
   updateTicket: (id: string, ticket: Partial<Ticket>) => void;
   filterStatus: 'all' | 'pending' | 'in-progress' | 'completed';
   setFilterStatus: (status: 'all' | 'pending' | 'in-progress' | 'completed') => void;
@@ -209,19 +209,25 @@ export const useTicketsStore = create<TicketsState>((set: any) => ({
   },
   filterStatus: 'all',
   setFilterStatus: (status: 'all' | 'pending' | 'in-progress' | 'completed') => set({ filterStatus: status }),
-  addTicket: (ticket: Omit<Ticket, 'id' | 'ticketNumber' | 'createdAt' | 'updatedAt'>) =>
+  addTicket: (ticket: Omit<Ticket, 'id' | 'ticketNumber' | 'createdAt' | 'updatedAt'>) => {
+    const ticketNumber = generateTicketNumber();
+    const id = Math.random().toString(36).substr(2, 9);
+    
     set((state: TicketsState) => ({
       tickets: [
         ...state.tickets,
         {
           ...ticket,
-          id: Math.random().toString(36).substr(2, 9),
-          ticketNumber: generateTicketNumber(),
+          id,
+          ticketNumber,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
       ],
-    })),
+    }));
+    
+    return ticketNumber;
+  },
   updateTicket: (id: string, updatedTicket: Partial<Ticket>) =>
     set((state: TicketsState) => ({
       tickets: state.tickets.map((ticket) =>

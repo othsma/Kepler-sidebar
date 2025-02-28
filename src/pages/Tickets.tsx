@@ -2,8 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useThemeStore, useTicketsStore, useClientsStore } from '../lib/store';
 import { Search, Plus, Clock, AlertTriangle, CheckCircle, FileText } from 'lucide-react';
 import TicketForm from '../components/TicketForm';
-import ThermalReceipt from '../components/ThermalReceipt';
-import InvoiceForm from '../components/InvoiceForm';
+import UnifiedTicketReceipt from '../components/UnifiedTicketReceipt';
 import ClientForm from '../components/ClientForm';
 
 export default function Tickets() {
@@ -48,6 +47,17 @@ export default function Tickets() {
     setSelectedClientId(clientId);
     setClientSearch(clients.find(c => c.id === clientId)?.name || '');
     setIsAddingClient(false);
+  };
+
+  const handleTicketSubmit = (ticketNumber: string) => {
+    setIsAddingTicket(false);
+    setEditingTicket(null);
+    setClientSearch('');
+    
+    if (ticketNumber) {
+      setNewTicketNumber(ticketNumber);
+      setShowReceipt(true);
+    }
   };
 
   return (
@@ -168,15 +178,7 @@ export default function Tickets() {
           ) : (
             <TicketForm
               clientId={editingTicket ? tickets.find(t => t.id === editingTicket)?.clientId : selectedClientId}
-              onSubmit={(ticketNumber) => {
-                setIsAddingTicket(false);
-                setEditingTicket(null);
-                setClientSearch('');
-                if (ticketNumber) {
-                  setNewTicketNumber(ticketNumber);
-                  setShowReceipt(true);
-                }
-              }}
+              onSubmit={handleTicketSubmit}
               onCancel={() => {
                 setIsAddingTicket(false);
                 setEditingTicket(null);
@@ -190,19 +192,20 @@ export default function Tickets() {
         </div>
       )}
 
-      {showReceipt && (
-        <ThermalReceipt
+      {showReceipt && newTicketNumber && (
+        <UnifiedTicketReceipt
           ticket={tickets.find(t => t.ticketNumber === newTicketNumber)!}
           clientId={selectedClientId}
           onClose={() => {
             setShowReceipt(false);
             setNewTicketNumber('');
           }}
+          type="receipt"
         />
       )}
 
-      {showQuote && (
-        <InvoiceForm
+      {showQuote && newTicketNumber && (
+        <UnifiedTicketReceipt
           ticket={tickets.find(t => t.ticketNumber === newTicketNumber)!}
           clientId={selectedClientId}
           onClose={() => setShowQuote(false)}
@@ -210,8 +213,8 @@ export default function Tickets() {
         />
       )}
 
-      {showInvoice && (
-        <InvoiceForm
+      {showInvoice && newTicketNumber && (
+        <UnifiedTicketReceipt
           ticket={tickets.find(t => t.ticketNumber === newTicketNumber)!}
           clientId={selectedClientId}
           onClose={() => setShowInvoice(false)}

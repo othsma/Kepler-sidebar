@@ -78,3 +78,75 @@
 .payment-method-button:not(.active) {
   @apply bg-gray-100 text-gray-700 hover:bg-gray-200;
 }
+
+/* Unified Receipt System Styles */
+.thermal-receipt {
+  font-family: 'Courier New', Courier, monospace;
+  width: 80mm;
+  padding: 5mm;
+  background-color: white;
+  color: black;
+  margin: 0 auto;
+}
+
+.thermal-receipt h1 {
+  font-size: 1.2rem;
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.thermal-receipt p {
+  margin: 0.2rem 0;
+  font-size: 0.8rem;
+}
+
+.thermal-receipt .divider {
+  border-top: 1px dashed #000;
+  margin: 0.5rem 0;
+}
+
+.thermal-receipt .text-center {
+  text-align: center;
+}
+
+.thermal-receipt .flex-between {
+  display: flex;
+  justify-content: space-between;
+}
+
+.a4-receipt {
+  width: 210mm;
+  padding: 20mm;
+  background-color: white;
+  color: black;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.a4-receipt h1 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.a4-receipt h2 {
+  font-size: 1.2rem;
+  margin-bottom: 0.8rem;
+}
+
+.a4-receipt table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.a4-receipt th, .a4-receipt td {
+  padding: 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.a4-receipt .footer {
+  margin-top: 2rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: #666;
+}
