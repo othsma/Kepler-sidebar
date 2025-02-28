@@ -32,7 +32,7 @@ export default function UnifiedTicketReceipt({
   const { clients } = useClientsStore();
   const client = clients.find(c => c.id === clientId);
   
-  const [format, setFormat] = useState<'thermal' | 'a4'>('thermal');
+  const [receiptFormat, setReceiptFormat] = useState<'thermal' | 'a4'>('thermal');
   const receiptRef = React.useRef<HTMLDivElement>(null);
 
   // Calculate tax and total
@@ -69,7 +69,7 @@ export default function UnifiedTicketReceipt({
   };
 
   const toggleFormat = () => {
-    setFormat(prevFormat => prevFormat === 'thermal' ? 'a4' : 'thermal');
+    setReceiptFormat(prevFormat => prevFormat === 'thermal' ? 'a4' : 'thermal');
   };
 
   const getTitle = () => {
@@ -310,10 +310,10 @@ export default function UnifiedTicketReceipt({
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-      <div className={`relative ${format === 'a4' ? 'w-[210mm] max-h-[90vh]' : 'w-96'} ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-xl overflow-y-auto`}>
+      <div className={`relative ${receiptFormat === 'a4' ? 'w-[210mm] max-h-[90vh]' : 'w-96'} ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-xl overflow-y-auto`}>
         <div className="flex justify-between items-center p-4 border-b sticky top-0 bg-white z-10">
           <h2 className="text-lg font-semibold text-gray-900">
-            {format === 'thermal' ? 'Thermal Receipt' : 'A4 Format'} - {getTitle()}
+            {receiptFormat === 'thermal' ? 'Thermal Receipt' : 'A4 Format'} - {getTitle()}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
             <X className="h-5 w-5" />
@@ -321,7 +321,7 @@ export default function UnifiedTicketReceipt({
         </div>
 
         <div className="p-4 overflow-auto">
-          {format === 'thermal' ? renderThermalReceipt() : renderA4Receipt()}
+          {receiptFormat === 'thermal' ? renderThermalReceipt() : renderA4Receipt()}
         </div>
 
         <div className="flex justify-end gap-2 p-4 border-t sticky bottom-0 bg-white">
@@ -329,8 +329,8 @@ export default function UnifiedTicketReceipt({
             onClick={toggleFormat}
             className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-1"
           >
-            {format === 'thermal' ? <FileText className="h-4 w-4" /> : <Receipt className="h-4 w-4" />}
-            Switch to {format === 'thermal' ? 'A4' : 'Thermal'}
+            {receiptFormat === 'thermal' ? <FileText className="h-4 w-4" /> : <Receipt className="h-4 w-4" />}
+            Switch to {receiptFormat === 'thermal' ? 'A4' : 'Thermal'}
           </button>
           <button
             onClick={handleDownload}
