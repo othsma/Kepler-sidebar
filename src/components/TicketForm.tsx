@@ -63,8 +63,7 @@ export default function TicketForm({ clientId, onSubmit, onCancel, editingTicket
     } else {
       const ticket = { ...formData, clientId: clientId!, technicianId: '' };
       addTicket(ticket);
-      const newTicket = useTicketsStore.getState().tickets[useTicketsStore.getState().tickets.length - 1];
-      onSubmit(newTicket.ticketNumber);
+      onSubmit('');
     }
   };
 
