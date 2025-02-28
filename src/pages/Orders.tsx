@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { useThemeStore, useOrdersStore, useClientsStore } from '../lib/store';
-import { ShoppingCart, Plus, Minus, Trash2, Calendar, Search, X, Save, Filter } from 'lucide-react';
+import { useThemeStore, useOrdersStore, useClientsStore, useProductsStore } from '../lib/store';
+import { 
+  ShoppingCart, Plus, Minus, Trash2, Calendar, Search, X, Save, Filter, 
+  Edit, Printer, FileText, AlertCircle, Check, ChevronUp, ChevronDown, 
+  ArrowUpDown, Eye
+} from 'lucide-react';
 import { format, addDays, isBefore, parseISO } from 'date-fns';
+import ThermalReceipt from '../components/ThermalReceipt';
+import A4Invoice from '../components/A4Invoice';
 
 export default function Orders() {
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
-  const { orders, createOrder } = useOrdersStore();
+  const { orders, createOrder, updateOrderStatus, removeOrder } = useOrdersStore();
   const { clients } = useClientsStore();
+  const { products } = useProductsStore();
   
   // Order form state
   const [selectedClient, setSelectedClient] = useState('');
@@ -31,9 +38,22 @@ export default function Orders() {
   const [taxAmount, setTaxAmount] = useState(0);
   const [grandTotal, setGrandTotal] = useState(0);
   
-  // Order list filters
+  // Order list filters and sorting
   const [orderListSearch, setOrderListSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [sortField, setSortField] = useState('createdAt');
+  const [sortDirection, setSortDirection] = useState('desc');
+  
+  // Modal states
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<any | null>(null);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [showThermalReceipt, setShowThermalReceipt] = useState(false);
+  const [showA4Invoice, setShowA4Invoice] = useState(false);
+  const [selectedOrderForReceipt, setSelectedOrderForReceipt] = useState<any | null>(null);
   
   // Filter clients based on search
   const filteredClients = clients.filter(client => 
@@ -42,16 +62,49 @@ export default function Orders() {
     client.phone.toLowerCase().includes(clientSearch.toLowerCase())
   );
   
-  // Filter orders based on search and status
-  const filteredOrders = orders.filter(order => {
-    const client = clients.find(c => c.id === order.clientId);
-    const matchesSearch = orderListSearch 
-      ? (client?.name.toLowerCase().includes(orderListSearch.toLowerCase()) || 
-         order.id.toLowerCase().includes(orderListSearch.toLowerCase()))
-      : true;
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  // Filter and sort orders
+  const filteredAndSortedOrders = [...orders]
+    .filter(order => {
+      const client = clients.find(c => c.id === order.clientId);
+      const matchesSearch = orderListSearch 
+        ? (client?.name.toLowerCase().includes(orderListSearch.toLowerCase()) || 
+           order.id.toLowerCase().includes(orderListSearch.toLowerCase()))
+        : true;
+      const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      // Handle date sorting
+      if (sortField === 'createdAt') {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
+      }
+      
+      // Handle total sorting
+      if (sortField === 'total') {
+        return sortDirection === 'asc' ? a.total - b.total : b.total - a.total;
+      }
+      
+      // Handle client name sorting
+      if (sortField === 'client') {
+        const clientA = clients.find(c => c.id === a.clientId)?.name || '';
+        const clientB = clients.find(c => c.id === b.clientId)?.name || '';
+        return sortDirection === 'asc' 
+          ? clientA.localeCompare(clientB)
+          : clientB.localeCompare(clientA);
+      }
+      
+      // Handle status sorting
+      if (sortField === 'status') {
+        return sortDirection === 'asc' 
+          ? a.status.localeCompare(b.status)
+          : b.status.localeCompare(a.status);
+      }
+      
+      // Default sort by ID
+      return sortDirection === 'asc' ? a.id.localeCompare(b.id) : b.id.localeCompare(a.id);
+    });
   
   // Calculate line totals and order totals
   useEffect(() => {
@@ -132,6 +185,16 @@ export default function Orders() {
     ));
   };
   
+  // Toggle sort direction or change sort field
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+  
   // Save the order
   const saveOrder = () => {
     if (!selectedClient) {
@@ -149,29 +212,32 @@ export default function Orders() {
       return;
     }
     
-    // In a real app, you would save this to a database
+    // Create order data
     const orderData = {
       clientId: selectedClient,
-      orderDate,
-      deliveryDate,
-      orderStatus,
-      paymentStatus,
-      paymentMethod,
-      amountPaid: paymentStatus === 'partially_paid' ? amountPaid : (paymentStatus === 'paid' ? grandTotal : 0),
-      items: orderItems.map(item => ({
-        name: item.name,
-        description: item.description,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice
+      items: orderItems.map(item => ({ 
+        productId: item.id.toString(), 
+        quantity: item.quantity 
       })),
-      subtotal,
-      taxAmount,
-      grandTotal
+      total: grandTotal,
+      status: orderStatus as any,
+      createdAt: new Date().toISOString()
     };
     
-    console.log('Order saved:', orderData);
+    // Save order
+    createOrder(selectedClient, grandTotal);
+    
+    // Show success message
+    setSuccessMessage('Order created successfully!');
+    setShowSuccessMessage(true);
+    setTimeout(() => setShowSuccessMessage(false), 3000);
     
     // Reset form
+    resetOrderForm();
+  };
+  
+  // Reset order form
+  const resetOrderForm = () => {
     setSelectedClient('');
     setClientSearch('');
     setOrderDate(format(new Date(), 'yyyy-MM-dd'));
@@ -183,34 +249,511 @@ export default function Orders() {
     setOrderItems([
       { id: Date.now(), name: '', description: '', quantity: 1, unitPrice: 0, lineTotal: 0 }
     ]);
-    
-    alert('Order saved successfully!');
   };
   
   // Cancel the order form
   const cancelOrder = () => {
     if (window.confirm('Are you sure you want to cancel this order? All data will be lost.')) {
-      setSelectedClient('');
-      setClientSearch('');
-      setOrderDate(format(new Date(), 'yyyy-MM-dd'));
-      setDeliveryDate(format(addDays(new Date(), 1), 'yyyy-MM-dd'));
-      setOrderStatus('pending');
-      setPaymentStatus('not_paid');
-      setPaymentMethod('cash');
-      setAmountPaid(0);
-      setOrderItems([
-        { id: Date.now(), name: '', description: '', quantity: 1, unitPrice: 0, lineTotal: 0 }
-      ]);
+      resetOrderForm();
     }
+  };
+  
+  // Handle delete confirmation
+  const confirmDelete = (orderId: string) => {
+    setOrderToDelete(orderId);
+    setShowDeleteConfirm(true);
+  };
+  
+  // Execute order deletion
+  const executeDelete = () => {
+    if (orderToDelete) {
+      removeOrder(orderToDelete);
+      setShowDeleteConfirm(false);
+      setOrderToDelete(null);
+      
+      // Show success message
+      setSuccessMessage('Order deleted successfully!');
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 3000);
+    }
+  };
+  
+  // Open edit modal
+  const openEditModal = (order: any) => {
+    const client = clients.find(c => c.id === order.clientId);
+    
+    setEditingOrder(order);
+    setSelectedClient(order.clientId);
+    setClientSearch(client?.name || '');
+    setOrderStatus(order.status);
+    
+    // Create order items from the order
+    const items = order.items.map((item: any) => {
+      const product = products.find(p => p.id === item.productId);
+      return {
+        id: parseInt(item.productId),
+        name: product?.name || 'Unknown Product',
+        description: product?.description || '',
+        quantity: item.quantity,
+        unitPrice: product?.price || 0,
+        lineTotal: (product?.price || 0) * item.quantity
+      };
+    });
+    
+    setOrderItems(items.length > 0 ? items : [{ id: Date.now(), name: '', description: '', quantity: 1, unitPrice: 0, lineTotal: 0 }]);
+    setShowEditModal(true);
+  };
+  
+  // Update existing order
+  const updateOrder = () => {
+    if (!editingOrder) return;
+    
+    if (!selectedClient) {
+      alert('Please select a client');
+      return;
+    }
+    
+    if (orderItems.some(item => !item.name)) {
+      alert('Please provide a name for all items');
+      return;
+    }
+    
+    if (orderItems.some(item => item.unitPrice <= 0)) {
+      alert('Please provide a valid price for all items');
+      return;
+    }
+    
+    // Update order status
+    updateOrderStatus(editingOrder.id, orderStatus as any);
+    
+    // Close modal
+    setShowEditModal(false);
+    setEditingOrder(null);
+    
+    // Show success message
+    setSuccessMessage('Order updated successfully!');
+    setShowSuccessMessage(true);
+    setTimeout(() => setShowSuccessMessage(false), 3000);
+    
+    // Reset form
+    resetOrderForm();
+  };
+  
+  // Generate invoice data for receipt/invoice
+  const generateInvoiceData = (order: any) => {
+    const client = clients.find(c => c.id === order.clientId);
+    const orderItems = order.items.map((item: any) => {
+      const product = products.find(p => p.id === item.productId);
+      return {
+        id: item.productId,
+        name: product?.name || 'Unknown Product',
+        sku: product?.sku || '',
+        quantity: item.quantity,
+        price: product?.price || 0,
+      };
+    });
+    
+    const subtotal = orderItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
+    const tax = subtotal * 0.2; // 20% VAT
+    
+    return {
+      invoiceNumber: `ORD-${order.id}`,
+      date: order.createdAt,
+      customer: client ? {
+        name: client.name,
+        email: client.email,
+        address: client.address,
+        phone: client.phone,
+      } : undefined,
+      items: orderItems,
+      subtotal,
+      tax,
+      total: order.total,
+      paymentMethod: 'Cash', // Default, would be stored in a real app
+      paymentStatus: 'Paid',
+    };
+  };
+  
+  // Show thermal receipt
+  const showReceipt = (order: any) => {
+    setSelectedOrderForReceipt(generateInvoiceData(order));
+    setShowThermalReceipt(true);
+  };
+  
+  // Show A4 invoice
+  const showInvoice = (order: any) => {
+    setSelectedOrderForReceipt(generateInvoiceData(order));
+    setShowA4Invoice(true);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className={`text-2xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-          In-Store Orders
+          Orders Management
         </h1>
       </div>
+
+      {/* Success Message */}
+      {showSuccessMessage && (
+        <div className="fixed top-4 right-4 z-50 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded flex items-center">
+          <Check className="h-5 w-5 mr-2" />
+          <span>{successMessage}</span>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className={`rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} p-6 max-w-md w-full`}>
+            <h3 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+              Confirm Deletion
+            </h3>
+            <p className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>
+              Are you sure you want to delete this order? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-4 mt-6">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className={`px-4 py-2 border rounded-md shadow-sm text-sm font-medium ${
+                  isDarkMode 
+                    ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={executeDelete}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center gap-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Order Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className={`rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto`}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                Edit Order #{editingOrder?.id}
+              </h3>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              {/* Client Selection */}
+              <div className="relative">
+                <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Customer *
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={clientSearch}
+                    onChange={(e) => {
+                      setClientSearch(e.target.value);
+                      setShowClientDropdown(true);
+                      if (!e.target.value) {
+                        setSelectedClient('');
+                      }
+                    }}
+                    onFocus={() => setShowClientDropdown(true)}
+                    placeholder="Search for a customer..."
+                    className={`block w-full rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 ${
+                      isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                  />
+                  {selectedClient && (
+                    <button
+                      onClick={() => {
+                        setSelectedClient('');
+                        setClientSearch('');
+                      }}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-500"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                  
+                  {showClientDropdown && clientSearch && (
+                    <div className={`absolute z-10 w-full mt-1 rounded-md shadow-lg max-h-60 overflow-y-auto ${
+                      isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'
+                    }`}>
+                      {filteredClients.length > 0 ? (
+                        filteredClients.map((client) => (
+                          <div
+                            key={client.id}
+                            className={`px-4 py-2 cursor-pointer ${
+                              isDarkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-100'
+                            }`}
+                            onClick={() => {
+                              setSelectedClient(client.id);
+                              setClientSearch(client.name);
+                              setShowClientDropdown(false);
+                            }}
+                          >
+                            <div className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                              {client.name}
+                            </div>
+                            <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                              {client.phone}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className={`px-4 py-2 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                          No customers found
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Order Status */}
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Order Status *
+                </label>
+                <select
+                  value={orderStatus}
+                  onChange={(e) => setOrderStatus(e.target.value)}
+                  className={`block w-full rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 ${
+                    isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                >
+                  <option value="pending">Pending</option>
+                  <option value="processing">Processing</option>
+                  <option value="ready_for_pickup">Ready for Pickup</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+              
+              {/* Order Items */}
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className={`text-md font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Order Items
+                  </h3>
+                  <button
+                    onClick={addItemRow}
+                    className="px-3 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center gap-1"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Item
+                  </button>
+                </div>
+                
+                <div className="overflow-x-auto">
+                  <table className={`min-w-full divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                    <thead>
+                      <tr>
+                        <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                          isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                        }`}>
+                          Item *
+                        </th>
+                        <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                          isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                        }`}>
+                          Description
+                        </th>
+                        <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${
+                          isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                        }`}>
+                          Quantity *
+                        </th>
+                        <th className={`px-4 py-3 text-right text-xs font-medium uppercase tracking-wider ${
+                          isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                        }`}>
+                          Unit Price *
+                        </th>
+                        <th className={`px-4 py-3 text-right text-xs font-medium uppercase tracking-wider ${
+                          isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                        }`}>
+                          Line Total
+                        </th>
+                        <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${
+                          isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                        }`}>
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                      {orderItems.map((item, index) => (
+                        <tr key={item.id}>
+                          <td className="px-4 py-3">
+                            <input
+                              type="text"
+                              value={item.name}
+                              onChange={(e) => updateItemName(item.id, e.target.value)}
+                              placeholder="Enter item name..."
+                              className={`block w-full rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 ${
+                                isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                              }`}
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <input
+                              type="text"
+                              value={item.description}
+                              onChange={(e) => updateItemDescription(item.id, e.target.value)}
+                              placeholder="Enter description..."
+                              className={`block w-full rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 ${
+                                isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                              }`}
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-center">
+                              <button
+                                onClick={() => updateItemQuantity(item.id, item.quantity - 1)}
+                                className={`p-1 rounded-full ${
+                                  isDarkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-100'
+                                }`}
+                                disabled={item.quantity <= 1}
+                              >
+                                <Minus className="h-4 w-4" />
+                              </button>
+                              <input
+                                type="number"
+                                min="1"
+                                value={item.quantity}
+                                onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value) || 1)}
+                                className={`mx-2 w-16 text-center rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 ${
+                                  isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                              />
+                              <button
+                                onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
+                                className={`p-1 rounded-full ${
+                                  isDarkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-100'
+                                }`}
+                              >
+                                <Plus className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="relative">
+                              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">$</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.unitPrice}
+                                onChange={(e) => updateItemPrice(item.id, parseFloat(e.target.value) || 0)}
+                                className={`block w-full pl-7 text-right rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 ${
+                                  isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                                }`}
+                              />
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="relative">
+                              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">$</span>
+                              <input
+                                type="text"
+                                value={item.lineTotal.toFixed(2)}
+                                readOnly
+                                className={`block w-full pl-7 text-right rounded-md shadow-sm bg-gray-50 ${
+                                  isDarkMode ? 'bg-gray-600 border-gray-600 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-500'
+                                }`}
+                              />
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <button
+                              onClick={() => removeItemRow(item.id)}
+                              className="text-red-500 hover:text-red-700"
+                              disabled={orderItems.length === 1}
+                            >
+                              <Trash2 className="h-5 w-5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* Order Totals */}
+                <div className="mt-6 flex justify-end">
+                  <div className="w-64 space-y-3">
+                    <div className="flex justify-between">
+                      <span className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>Subtotal:</span>
+                      <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        ${subtotal.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>Tax (20%):</span>
+                      <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        ${taxAmount.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between border-t pt-3">
+                      <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Grand Total:</span>
+                      <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        ${grandTotal.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-4 mt-6">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className={`px-4 py-2 border rounded-md shadow-sm text-sm font-medium ${
+                  isDarkMode 
+                    ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={updateOrder}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center gap-2"
+              >
+                <Save className="h-4 w-4" />
+                Update Order
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Thermal Receipt Modal */}
+      {showThermalReceipt && selectedOrderForReceipt && (
+        <ThermalReceipt
+          invoice={selectedOrderForReceipt}
+          onClose={() => setShowThermalReceipt(false)}
+        />
+      )}
+
+      {/* A4 Invoice Modal */}
+      {showA4Invoice && selectedOrderForReceipt && (
+        <A4Invoice
+          invoice={selectedOrderForReceipt}
+          onClose={() => setShowA4Invoice(false)}
+        />
+      )}
 
       <div className={`rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow p-6`}>
         <h2 className={`text-lg font-semibold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
@@ -655,41 +1198,101 @@ export default function Orders() {
           <table className={`min-w-full divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
             <thead>
               <tr>
-                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                  isDarkMode ? 'text-gray-300' : 'text-gray-500'
-                }`}>
-                  Order #
+                <th 
+                  className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                  }`}
+                  onClick={() => handleSort('id')}
+                >
+                  <div className="flex items-center">
+                    Order #
+                    {sortField === 'id' && (
+                      sortDirection === 'asc' ? 
+                        <ChevronUp className="h-4 w-4 ml-1" /> : 
+                        <ChevronDown className="h-4 w-4 ml-1" />
+                    )}
+                    {sortField !== 'id' && <ArrowUpDown className="h-4 w-4 ml-1 opacity-50" />}
+                  </div>
                 </th>
-                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                  isDarkMode ? 'text-gray-300' : 'text-gray-500'
-                }`}>
-                  Customer
+                <th 
+                  className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                  }`}
+                  onClick={() => handleSort('client')}
+                >
+                  <div className="flex items-center">
+                    Customer
+                    {sortField === 'client' && (
+                      sortDirection === 'asc' ? 
+                        <ChevronUp className="h-4 w-4 ml-1" /> : 
+                        <ChevronDown className="h-4 w-4 ml-1" />
+                    )}
+                    {sortField !== 'client' && <ArrowUpDown className="h-4 w-4 ml-1 opacity-50" />}
+                  </div>
                 </th>
-                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                  isDarkMode ? 'text-gray-300' : 'text-gray-500'
-                }`}>
-                  Date
+                <th 
+                  className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                  }`}
+                  onClick={() => handleSort('createdAt')}
+                >
+                  <div className="flex items-center">
+                    Date
+                    {sortField === 'createdAt' && (
+                      sortDirection === 'asc' ? 
+                        <ChevronUp className="h-4 w-4 ml-1" /> : 
+                        <ChevronDown className="h-4 w-4 ml-1" />
+                    )}
+                    {sortField !== 'createdAt' && <ArrowUpDown className="h-4 w-4 ml-1 opacity-50" />}
+                  </div>
                 </th>
-                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                  isDarkMode ? 'text-gray-300' : 'text-gray-500'
-                }`}>
-                  Status
+                <th 
+                  className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                  }`}
+                  onClick={() => handleSort('status')}
+                >
+                  <div className="flex items-center">
+                    Status
+                    {sortField === 'status' && (
+                      sortDirection === 'asc' ? 
+                        <ChevronUp className="h-4 w-4 ml-1" /> : 
+                        <ChevronDown className="h-4 w-4 ml-1" />
+                    )}
+                    {sortField !== 'status' && <ArrowUpDown className="h-4 w-4 ml-1 opacity-50" />}
+                  </div>
                 </th>
-                <th className={`px-4 py-3 text-right text-xs font-medium uppercase tracking-wider ${
+                <th 
+                  className={`px-4 py-3 text-right text-xs font-medium uppercase tracking-wider cursor-pointer ${
+                    isDarkMode ? 'text-gray-300' : 'text-gray-500'
+                  }`}
+                  onClick={() => handleSort('total')}
+                >
+                  <div className="flex items-center justify-end">
+                    Total
+                    {sortField === 'total' && (
+                      sortDirection === 'asc' ? 
+                        <ChevronUp className="h-4 w-4 ml-1" /> : 
+                        <ChevronDown className="h-4 w-4 ml-1" />
+                    )}
+                    {sortField !== 'total' && <ArrowUpDown className="h-4 w-4 ml-1 opacity-50" />}
+                  </div>
+                </th>
+                <th className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider ${
                   isDarkMode ? 'text-gray-300' : 'text-gray-500'
                 }`}>
-                  Total
+                  Actions
                 </th>
               </tr>
             </thead>
             <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
-              {filteredOrders.length > 0 ? (
-                filteredOrders.map((order) => {
+              {filteredAndSortedOrders.length > 0 ? (
+                filteredAndSortedOrders.map((order) => {
                   const client = clients.find((c) => c.id === order.clientId);
                   return (
                     <tr 
                       key={order.id}
-                      className={`hover:bg-gray-50 ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'} cursor-pointer`}
+                      className={`${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}`}
                     >
                       <td className={`px-4 py-4 whitespace-nowrap ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                         #{order.id}
@@ -715,12 +1318,44 @@ export default function Orders() {
                       <td className={`px-4 py-4 whitespace-nowrap text-right font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                         ${order.total.toFixed(2)}
                       </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-center">
+                        <div className="flex justify-center space-x-2">
+                          <button
+                            onClick={() => openEditModal(order)}
+                            className="text-indigo-600 hover:text-indigo-900"
+                            title="Edit Order"
+                          >
+                            <Edit className="h-5 w-5" />
+                          </button>
+                          <button
+                            onClick={() => showReceipt(order)}
+                            className="text-green-600 hover:text-green-900"
+                            title="Print Thermal Receipt"
+                          >
+                            <Printer className="h-5 w-5" />
+                          </button>
+                          <button
+                            onClick={() => showInvoice(order)}
+                            className="text-blue-600 hover:text-blue-900"
+                            title="Generate A4 Invoice"
+                          >
+                            <FileText className="h-5 w-5" />
+                          </button>
+                          <button
+                            onClick={() => confirmDelete(order.id)}
+                            className="text-red-600 hover:text-red-900"
+                            title="Delete Order"
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })
               ) : (
                 <tr>
-                  <td colSpan={5} className={`px-4 py-4 text-center ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <td colSpan={6} className={`px-4 py-4 text-center ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                     No orders found
                   </td>
                 </tr>

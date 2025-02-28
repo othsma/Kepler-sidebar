@@ -439,7 +439,7 @@ interface Order {
   id: string;
   items: CartItem[];
   total: number;
-  status: 'pending' | 'completed' | 'cancelled';
+  status: 'pending' | 'processing' | 'ready_for_pickup' | 'completed' | 'cancelled';
   clientId: string;
   createdAt: string;
 }
@@ -452,6 +452,7 @@ interface OrdersState {
   clearCart: () => void;
   createOrder: (clientId: string, total: number) => void;
   updateOrderStatus: (orderId: string, status: Order['status']) => void;
+  removeOrder: (orderId: string) => void;
 }
 
 const fakeOrders: Order[] = [
@@ -461,7 +462,7 @@ const fakeOrders: Order[] = [
     total: 999,
     status: 'completed',
     clientId: '1',
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
   },
   {
     id: '2',
@@ -469,7 +470,7 @@ const fakeOrders: Order[] = [
     total: 799,
     status: 'pending',
     clientId: '2',
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
   },
   {
     id: '3',
@@ -477,8 +478,38 @@ const fakeOrders: Order[] = [
     total: 1299,
     status: 'completed',
     clientId: '3',
-    createdAt: new Date().toISOString(),
+    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
   },
+  {
+    id: '4',
+    items: [
+      { productId: '1', quantity: 2 },
+      { productId: '2', quantity: 1 }
+    ],
+    total: 2797,
+    status: 'processing',
+    clientId: '1',
+    createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
+  },
+  {
+    id: '5',
+    items: [{ productId: '3', quantity: 1 }],
+    total: 1299,
+    status: 'ready_for_pickup',
+    clientId: '2',
+    createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), // 5 hours ago
+  },
+  {
+    id: '6',
+    items: [
+      { productId: '1', quantity: 1 },
+      { productId: '3', quantity: 1 }
+    ],
+    total: 2298,
+    status: 'cancelled',
+    clientId: '3',
+    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+  }
 ];
 
 export const useOrdersStore = create<OrdersState>((set: any) => ({
@@ -516,6 +547,10 @@ export const useOrdersStore = create<OrdersState>((set: any) => ({
       orders: state.orders.map((order) =>
         order.id === orderId ? { ...order, status } : order
       ),
+    })),
+  removeOrder: (orderId: string) =>
+    set((state: OrdersState) => ({
+      orders: state.orders.filter((order) => order.id !== orderId),
     })),
 }));
 
