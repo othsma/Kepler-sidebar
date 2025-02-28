@@ -9,7 +9,7 @@ interface A4InvoiceProps {
   invoice: {
     invoiceNumber: string;
     date: string;
-    customer: {
+    customer?: {
       name: string;
       email: string;
       address: string;
@@ -42,7 +42,7 @@ export default function A4Invoice({ invoice, onClose }: A4InvoiceProps) {
   };
 
   const handleEmail = () => {
-    if (invoice.customer.email) {
+    if (invoice.customer?.email) {
       window.location.href = `mailto:${invoice.customer.email}?subject=Invoice ${invoice.invoiceNumber}&body=Please find attached your invoice.`;
     }
   };
@@ -104,12 +104,18 @@ export default function A4Invoice({ invoice, onClose }: A4InvoiceProps) {
           
           <div className="mb-8">
             <h3 className="font-bold mb-2 text-gray-900">Bill To:</h3>
-            <p className="text-gray-800">{invoice.customer.name}</p>
-            <p className="text-gray-800">{invoice.customer.address}</p>
-            <p className="text-gray-800">Tel: {invoice.customer.phone}</p>
-            <p className="text-gray-800">{invoice.customer.email}</p>
-            {invoice.customer.taxId && (
-              <p className="text-gray-800">Tax ID: {invoice.customer.taxId}</p>
+            {invoice.customer ? (
+              <>
+                <p className="text-gray-800">{invoice.customer.name}</p>
+                <p className="text-gray-800">{invoice.customer.address}</p>
+                <p className="text-gray-800">Tel: {invoice.customer.phone}</p>
+                <p className="text-gray-800">{invoice.customer.email}</p>
+                {invoice.customer.taxId && (
+                  <p className="text-gray-800">Tax ID: {invoice.customer.taxId}</p>
+                )}
+              </>
+            ) : (
+              <p className="text-gray-800">Walk-in Customer</p>
             )}
           </div>
           
@@ -210,13 +216,15 @@ export default function A4Invoice({ invoice, onClose }: A4InvoiceProps) {
             <Download className="h-4 w-4" />
             Download
           </button>
-          <button
-            onClick={handleEmail}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
-          >
-            <Mail className="h-4 w-4" />
-            Email
-          </button>
+          {invoice.customer?.email && (
+            <button
+              onClick={handleEmail}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+            >
+              <Mail className="h-4 w-4" />
+              Email
+            </button>
+          )}
           <button
             onClick={handlePrint}
             className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center gap-2"
