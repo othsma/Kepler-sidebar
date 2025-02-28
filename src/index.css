@@ -19,10 +19,10 @@
   body * {
     visibility: hidden;
   }
-  .receipt-content, .receipt-content * {
+  .receipt-content, .receipt-content *, .invoice-content, .invoice-content * {
     visibility: visible;
   }
-  .receipt-content {
+  .receipt-content, .invoice-content {
     position: absolute;
     left: 0;
     top: 0;
