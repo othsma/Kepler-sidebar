@@ -310,7 +310,7 @@ export default function UnifiedTicketReceipt({
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-      <div className={`relative ${receiptFormat === 'a4' ? 'w-[210mm] max-h-[90vh]' : 'w-96'} ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-xl overflow-y-auto`}>
+      <div className={`relative ${receiptFormat === 'a4' ? 'w-[210mm] max-h-[90vh]' : 'w-120'} ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-xl overflow-y-auto`}>
         <div className="flex justify-between items-center p-4 border-b sticky top-0 bg-white z-10">
           <h2 className="text-lg font-semibold text-gray-900">
             {receiptFormat === 'thermal' ? 'Thermal Receipt' : 'A4 Format'} - {getTitle()}
