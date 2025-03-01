@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useThemeStore, useTicketsStore } from '../lib/store';
-import { Plus } from 'lucide-react';
+import { Plus, Minus, DollarSign } from 'lucide-react';
 
 interface TicketFormProps {
   clientId?: string;
@@ -19,6 +19,11 @@ interface TicketFormProps {
   };
 }
 
+interface TaskWithCost {
+  name: string;
+  cost: number;
+}
+
 export default function TicketForm({ clientId, onSubmit, onCancel, editingTicket, initialData }: TicketFormProps) {
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const { settings, addTicket, updateTicket, addDeviceType, addBrand, addModel, addTask } = useTicketsStore();
@@ -27,16 +32,27 @@ export default function TicketForm({ clientId, onSubmit, onCancel, editingTicket
   const [brandSearch, setBrandSearch] = useState('');
   const [newModelName, setNewModelName] = useState('');
   const [isAddingModel, setIsAddingModel] = useState(false);
+  const [newTaskInput, setNewTaskInput] = useState('');
+  const [newTaskCost, setNewTaskCost] = useState(0);
+  
+  // Convert initial tasks to task with cost objects
+  const initialTasksWithCost = initialData?.tasks.map(task => ({
+    name: task,
+    cost: initialData.cost / initialData.tasks.length // Distribute cost evenly for initial data
+  })) || [];
+
   const [formData, setFormData] = useState({
     deviceType: initialData?.deviceType || '',
     brand: initialData?.brand || '',
     model: initialData?.model || '',
-    tasks: initialData?.tasks || [],
+    tasksWithCost: initialTasksWithCost,
     issue: initialData?.issue || '',
-    cost: initialData?.cost || 0,
     passcode: initialData?.passcode || '',
     status: initialData?.status || 'pending' as const,
   });
+
+  // Calculate total cost from all tasks
+  const totalCost = formData.tasksWithCost.reduce((sum, task) => sum + task.cost, 0);
 
   // Get most used tasks
   const [popularTasks, setPopularTasks] = useState<string[]>([]);
@@ -57,8 +73,17 @@ export default function TicketForm({ clientId, onSubmit, onCancel, editingTicket
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Extract task names for the ticket
+    const tasks = formData.tasksWithCost.map(task => task.name);
+    
     if (editingTicket) {
-      updateTicket(editingTicket, { ...formData, clientId });
+      updateTicket(editingTicket, { 
+        ...formData, 
+        tasks, 
+        cost: totalCost,
+        clientId 
+      });
       onSubmit('');
     } else {
       if (!clientId) {
@@ -66,18 +91,44 @@ export default function TicketForm({ clientId, onSubmit, onCancel, editingTicket
         return;
       }
       
-      const ticket = { ...formData, clientId, technicianId: '' };
+      const ticket = { 
+        ...formData, 
+        tasks,
+        cost: totalCost,
+        clientId, 
+        technicianId: '' 
+      };
       const newTicketNumber = addTicket(ticket);
       onSubmit(newTicketNumber);
     }
   };
 
-  const handleTaskToggle = (task: string) => {
+  const handleTaskToggle = (taskName: string) => {
+    setFormData(prev => {
+      const taskExists = prev.tasksWithCost.some(t => t.name === taskName);
+      
+      if (taskExists) {
+        // Remove task
+        return {
+          ...prev,
+          tasksWithCost: prev.tasksWithCost.filter(t => t.name !== taskName)
+        };
+      } else {
+        // Add task with default cost
+        return {
+          ...prev,
+          tasksWithCost: [...prev.tasksWithCost, { name: taskName, cost: 0 }]
+        };
+      }
+    });
+  };
+
+  const updateTaskCost = (taskName: string, cost: number) => {
     setFormData(prev => ({
       ...prev,
-      tasks: prev.tasks.includes(task)
-        ? prev.tasks.filter(t => t !== task)
-        : [...prev.tasks, task]
+      tasksWithCost: prev.tasksWithCost.map(task => 
+        task.name === taskName ? { ...task, cost } : task
+      )
     }));
   };
 
@@ -106,6 +157,29 @@ export default function TicketForm({ clientId, onSubmit, onCancel, editingTicket
     }
   };
 
+  const handleAddNewTask = () => {
+    const value = newTaskInput.trim();
+    if (value && !formData.tasksWithCost.some(t => t.name === value)) {
+      if (!settings.tasks.includes(value)) {
+        addTask(value);
+        // Update popular tasks to include the new task
+        setPopularTasks(prev => {
+          if (prev.includes(value)) return prev;
+          return [value, ...prev.slice(0, 5)];
+        });
+      }
+      
+      // Add the new task with its cost
+      setFormData(prev => ({
+        ...prev,
+        tasksWithCost: [...prev.tasksWithCost, { name: value, cost: newTaskCost }]
+      }));
+      
+      setNewTaskInput('');
+      setNewTaskCost(0);
+    }
+  };
+
   const filteredDeviceTypes = settings.deviceTypes.filter(type => 
     type.toLowerCase().includes(deviceTypeSearch.toLowerCase())
   );
@@ -117,6 +191,12 @@ export default function TicketForm({ clientId, onSubmit, onCancel, editingTicket
   const availableModels = settings.models.filter(model => 
     model.brandId === formData.brand
   );
+
+  // Combine popular tasks with all tasks to ensure new tasks are displayed
+  const displayedTasks = [...new Set([...popularTasks, ...settings.tasks.filter(task => 
+    !popularTasks.includes(task) && 
+    task.toLowerCase().includes(newTaskInput.toLowerCase())
+  )])].slice(0, 8);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -266,43 +346,106 @@ export default function TicketForm({ clientId, onSubmit, onCancel, editingTicket
       </div>
 
       <div>
-        <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-          Tasks
-        </label>
-        <div className="mt-2 space-y-2">
+        <div className="flex justify-between items-center">
+          <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+            Tasks
+          </label>
+          <div className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+            Total Cost: ${totalCost.toFixed(2)}
+          </div>
+        </div>
+        
+        <div className="mt-2 space-y-4">
+          {/* Task selection */}
           <div className="grid grid-cols-2 gap-2">
-            {popularTasks.map((task) => (
+            {displayedTasks.map((task) => (
               <label key={task} className="flex items-center space-x-2">
                 <input
                   type="checkbox"
-                  checked={formData.tasks.includes(task)}
+                  checked={formData.tasksWithCost.some(t => t.name === task)}
                   onChange={() => handleTaskToggle(task)}
                   className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
-                <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>{task}</span>
+                <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
+                  {task}
+                  {!popularTasks.includes(task) && formData.tasksWithCost.some(t => t.name === task) && (
+                    <span className="ml-1 text-green-600">✓</span>
+                  )}
+                </span>
               </label>
             ))}
           </div>
+          
+          {/* Add new task with cost */}
           <div className="flex gap-2 items-center mt-2">
             <input
               type="text"
+              value={newTaskInput}
+              onChange={(e) => setNewTaskInput(e.target.value)}
               placeholder="Add new task"
+              className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
-                  const value = e.currentTarget.value.trim();
-                  if (value && !formData.tasks.includes(value)) {
-                    if (!settings.tasks.includes(value)) {
-                      addTask(value);
-                    }
-                    handleTaskToggle(value);
-                    e.currentTarget.value = '';
-                  }
+                  handleAddNewTask();
                 }
               }}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             />
+            <div className="flex items-center">
+              <span className="mr-1">$</span>
+              <input
+                type="number"
+                value={newTaskCost}
+                onChange={(e) => setNewTaskCost(Number(e.target.value))}
+                placeholder="Cost"
+                className="w-20 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleAddNewTask}
+              className="px-3 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center gap-1"
+            >
+              <Plus className="h-4 w-4" />
+              Add
+            </button>
           </div>
+          
+          {/* Selected tasks with cost */}
+          {formData.tasksWithCost.length > 0 && (
+            <div className="mt-4">
+              <h4 className={`text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                Selected Tasks
+              </h4>
+              <div className="space-y-2 border rounded-md p-3">
+                {formData.tasksWithCost.map((task) => (
+                  <div key={task.name} className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => handleTaskToggle(task.name)}
+                        className="mr-2 text-red-500 hover:text-red-700"
+                      >
+                        <Minus className="h-4 w-4" />
+                      </button>
+                      <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
+                        {task.name}
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      <DollarSign className="h-4 w-4 text-gray-400" />
+                      <input
+                        type="number"
+                        value={task.cost}
+                        onChange={(e) => updateTaskCost(task.name, Number(e.target.value))}
+                        className="w-20 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -326,19 +469,6 @@ export default function TicketForm({ clientId, onSubmit, onCancel, editingTicket
           value={formData.issue}
           onChange={(e) => setFormData({ ...formData, issue: e.target.value })}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-        />
-      </div>
-
-      <div>
-        <label className={`block text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-          Estimated Cost
-        </label>
-        <input
-          type="number"
-          value={formData.cost}
-          onChange={(e) => setFormData({ ...formData, cost: Number(e.target.value) })}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-          required
         />
       </div>
 
