@@ -51,7 +51,7 @@ export default function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
 
       <button 
         onClick={toggleSidebar}
-        className={`absolute top-4 -right-4 p-1 rounded-full shadow-md ${
+        className={`absolute top-4 right-0 translate-x-1/2 p-1 rounded-full shadow-md ${
           isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-white text-gray-700'
         }`}
       >

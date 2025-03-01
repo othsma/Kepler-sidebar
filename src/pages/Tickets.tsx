@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useThemeStore, useTicketsStore, useClientsStore } from '../lib/store';
-import { Search, Plus, Clock, AlertTriangle, CheckCircle, FileText } from 'lucide-react';
+import { Search, Plus, Clock, AlertTriangle, CheckCircle, FileText, Filter, Calendar, User } from 'lucide-react';
+import { format } from 'date-fns';
 import TicketForm from '../components/TicketForm';
 import UnifiedTicketReceipt from '../components/UnifiedTicketReceipt';
 import ClientForm from '../components/ClientForm';
@@ -9,7 +10,7 @@ export default function Tickets() {
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const { tickets, updateTicket, filterStatus, setFilterStatus } = useTicketsStore();
   const { clients } = useClientsStore();
-  const [isAddingTicket, setIsAddingTicket] = useState(false);
+  const [isAddingTicket, setIsAddingTicket] = useState(true); // Default to true to show the form first
   const [editingTicket, setEditingTicket] = useState<string | null>(null);
   const [clientSearch, setClientSearch] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string>('');
@@ -18,6 +19,7 @@ export default function Tickets() {
   const [showInvoice, setShowInvoice] = useState(false);
   const [newTicketNumber, setNewTicketNumber] = useState('');
   const [isAddingClient, setIsAddingClient] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const filteredClients = useMemo(() => {
     return clients.filter((client) =>
@@ -27,17 +29,27 @@ export default function Tickets() {
   }, [clients, clientSearch]);
 
   const filteredTickets = tickets.filter(
-    (ticket) => filterStatus === 'all' || ticket.status === filterStatus
+    (ticket) => {
+      const matchesStatus = filterStatus === 'all' || ticket.status === filterStatus;
+      const matchesSearch = searchQuery 
+        ? ticket.ticketNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          ticket.deviceType.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          ticket.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          clients.find(c => c.id === ticket.clientId)?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          false
+        : true;
+      return matchesStatus && matchesSearch;
+    }
   );
 
-  const getStatusIcon = (status: string) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Clock className="h-5 w-5 text-yellow-500" />;
+        return <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">Pending</span>;
       case 'in-progress':
-        return <AlertTriangle className="h-5 w-5 text-blue-500" />;
+        return <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">In Progress</span>;
       case 'completed':
-        return <CheckCircle className="h-5 w-5 text-green-500" />;
+        return <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Completed</span>;
       default:
         return null;
     }
@@ -67,57 +79,15 @@ export default function Tickets() {
           Repair Tickets
         </h1>
         <button
-          onClick={() => setIsAddingTicket(true)}
+          onClick={() => setIsAddingTicket(!isAddingTicket)}
           className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 flex items-center gap-2"
         >
           <Plus className="h-4 w-4" />
-          New Ticket
+          {isAddingTicket ? 'Hide Form' : 'New Ticket'}
         </button>
       </div>
 
-      <div className="flex gap-4">
-        <button
-          onClick={() => setFilterStatus('all')}
-          className={`px-4 py-2 rounded-md ${
-            filterStatus === 'all'
-              ? 'bg-indigo-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          All
-        </button>
-        <button
-          onClick={() => setFilterStatus('pending')}
-          className={`px-4 py-2 rounded-md ${
-            filterStatus === 'pending'
-              ? 'bg-indigo-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          Pending
-        </button>
-        <button
-          onClick={() => setFilterStatus('in-progress')}
-          className={`px-4 py-2 rounded-md ${
-            filterStatus === 'in-progress'
-              ? 'bg-indigo-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          In Progress
-        </button>
-        <button
-          onClick={() => setFilterStatus('completed')}
-          className={`px-4 py-2 rounded-md ${
-            filterStatus === 'completed'
-              ? 'bg-indigo-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          Completed
-        </button>
-      </div>
-
+      {/* Create New Ticket Section - Now displayed first */}
       {(isAddingTicket || editingTicket) && (
         <div className={`rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow p-6`}>
           <h2 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
@@ -192,6 +162,167 @@ export default function Tickets() {
         </div>
       )}
 
+      {/* Tickets Table Section */}
+      <div className={`rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow p-6`}>
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="flex-1 flex items-center gap-4 bg-white dark:bg-gray-700 p-4 rounded-lg shadow-inner">
+            <Search className="h-5 w-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search tickets..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 bg-transparent border-0 focus:ring-0 text-gray-900 dark:text-white placeholder-gray-400"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Filter className="h-5 w-5 text-gray-400" />
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as any)}
+              className="rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            >
+              <option value="all">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="in-progress">In Progress</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className={isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}>
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Ticket #
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Client
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Device
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Tasks
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Cost
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Status
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Date
+                </th>
+                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className={`divide-y divide-gray-200 dark:divide-gray-700 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+              {filteredTickets.length > 0 ? (
+                filteredTickets.map((ticket) => {
+                  const client = clients.find((c) => c.id === ticket.clientId);
+                  return (
+                    <tr key={ticket.id} className={`hover:${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                        #{ticket.ticketNumber}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                        <div className="flex items-center">
+                          <User className="h-4 w-4 mr-2 text-gray-400" />
+                          {client?.name || 'Unknown Client'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                        {ticket.deviceType} - {ticket.brand}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-300 max-w-xs truncate">
+                        {ticket.tasks.join(', ')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                        ${ticket.cost}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {getStatusBadge(ticket.status)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                        <div className="flex items-center">
+                          <Calendar className="h-4 w-4 mr-2 text-gray-400" />
+                          {format(new Date(ticket.createdAt), 'MMM d, yyyy')}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex justify-end space-x-2">
+                          <button
+                            onClick={() => {
+                              setNewTicketNumber(ticket.ticketNumber);
+                              setSelectedClientId(ticket.clientId);
+                              setShowReceipt(true);
+                            }}
+                            className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                          >
+                            Receipt
+                          </button>
+                          <button
+                            onClick={() => {
+                              setNewTicketNumber(ticket.ticketNumber);
+                              setSelectedClientId(ticket.clientId);
+                              setShowQuote(true);
+                            }}
+                            className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                          >
+                            Quote
+                          </button>
+                          {ticket.status === 'completed' && (
+                            <button
+                              onClick={() => {
+                                setNewTicketNumber(ticket.ticketNumber);
+                                setSelectedClientId(ticket.clientId);
+                                setShowInvoice(true);
+                              }}
+                              className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                            >
+                              Invoice
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setEditingTicket(ticket.id)}
+                            className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                          >
+                            Edit
+                          </button>
+                          <select
+                            value={ticket.status}
+                            onChange={(e) =>
+                              updateTicket(ticket.id, {
+                                status: e.target.value as 'pending' | 'in-progress' | 'completed',
+                              })
+                            }
+                            className="text-sm rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                          </select>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                    No tickets found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {showReceipt && newTicketNumber && (
         <UnifiedTicketReceipt
           ticket={tickets.find(t => t.ticketNumber === newTicketNumber)!}
@@ -221,98 +352,6 @@ export default function Tickets() {
           type="invoice"
         />
       )}
-
-      <div className="grid gap-6">
-        {filteredTickets.map((ticket) => {
-          const client = clients.find((c) => c.id === ticket.clientId);
-          return (
-            <div
-              key={ticket.id}
-              className={`rounded-lg ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow p-6`}
-            >
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="flex items-center gap-2">
-                    {getStatusIcon(ticket.status)}
-                    <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {client?.name} - #{ticket.ticketNumber}
-                    </h3>
-                  </div>
-                  <div className="mt-2 space-y-1">
-                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      Device: {ticket.deviceType} ({ticket.brand})
-                    </p>
-                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      Tasks: {ticket.tasks.join(', ')}
-                    </p>
-                    {ticket.issue && (
-                      <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Issue: {ticket.issue}
-                      </p>
-                    )}
-                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      Cost: ${ticket.cost}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      setNewTicketNumber(ticket.ticketNumber);
-                      setSelectedClientId(ticket.clientId);
-                      setShowReceipt(true);
-                    }}
-                    className="px-3 py-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700"
-                  >
-                    Receipt
-                  </button>
-                  <button
-                    onClick={() => {
-                      setNewTicketNumber(ticket.ticketNumber);
-                      setSelectedClientId(ticket.clientId);
-                      setShowQuote(true);
-                    }}
-                    className="px-3 py-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700"
-                  >
-                    Quote
-                  </button>
-                  {ticket.status === 'completed' && (
-                    <button
-                      onClick={() => {
-                        setNewTicketNumber(ticket.ticketNumber);
-                        setSelectedClientId(ticket.clientId);
-                        setShowInvoice(true);
-                      }}
-                      className="px-3 py-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700"
-                    >
-                      Invoice
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setEditingTicket(ticket.id)}
-                    className="px-3 py-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700"
-                  >
-                    Edit
-                  </button>
-                  <select
-                    value={ticket.status}
-                    onChange={(e) =>
-                      updateTicket(ticket.id, {
-                        status: e.target.value as 'pending' | 'in-progress' | 'completed',
-                      })
-                    }
-                    className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="completed">Completed</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }
