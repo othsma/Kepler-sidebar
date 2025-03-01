@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useThemeStore, useTicketsStore, useClientsStore } from '../lib/store';
-import { Search, Plus, Clock, AlertTriangle, CheckCircle, FileText, Filter, Calendar, User } from 'lucide-react';
+import { Search, Plus, Clock, AlertTriangle, CheckCircle, FileText, Filter, Calendar, User, Edit, Printer, FileText as FileIcon, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import TicketForm from '../components/TicketForm';
 import UnifiedTicketReceipt from '../components/UnifiedTicketReceipt';
@@ -69,6 +69,13 @@ export default function Tickets() {
     if (ticketNumber) {
       setNewTicketNumber(ticketNumber);
       setShowReceipt(true);
+    }
+  };
+
+  const handleDeleteTicket = (ticketId: string) => {
+    if (window.confirm('Are you sure you want to delete this ticket?')) {
+      // In a real app, you would implement the delete functionality here
+      console.log('Deleting ticket:', ticketId);
     }
   };
 
@@ -215,7 +222,7 @@ export default function Tickets() {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Date
                 </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -245,7 +252,19 @@ export default function Tickets() {
                         ${ticket.cost}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(ticket.status)}
+                        <select
+                          value={ticket.status}
+                          onChange={(e) =>
+                            updateTicket(ticket.id, {
+                              status: e.target.value as 'pending' | 'in-progress' | 'completed',
+                            })
+                          }
+                          className="text-sm rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="in-progress">In Progress</option>
+                          <option value="completed">Completed</option>
+                        </select>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                         <div className="flex items-center">
@@ -253,59 +272,51 @@ export default function Tickets() {
                           {format(new Date(ticket.createdAt), 'MMM d, yyyy')}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex justify-end space-x-2">
+                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                        <div className="flex justify-center space-x-3">
+                          {/* Edit button */}
+                          <button
+                            onClick={() => setEditingTicket(ticket.id)}
+                            className="text-blue-600 hover:text-blue-800"
+                            title="Edit"
+                          >
+                            <Edit className="h-5 w-5" />
+                          </button>
+                          
+                          {/* Thermal Receipt button */}
                           <button
                             onClick={() => {
                               setNewTicketNumber(ticket.ticketNumber);
                               setSelectedClientId(ticket.clientId);
                               setShowReceipt(true);
                             }}
-                            className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                            className="text-green-600 hover:text-green-800"
+                            title="Print Receipt"
                           >
-                            Receipt
+                            <Printer className="h-5 w-5" />
                           </button>
+                          
+                          {/* Invoice button */}
                           <button
                             onClick={() => {
                               setNewTicketNumber(ticket.ticketNumber);
                               setSelectedClientId(ticket.clientId);
-                              setShowQuote(true);
+                              setShowInvoice(true);
                             }}
-                            className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                            className="text-indigo-600 hover:text-indigo-800"
+                            title="Generate Invoice"
                           >
-                            Quote
+                            <FileIcon className="h-5 w-5" />
                           </button>
-                          {ticket.status === 'completed' && (
-                            <button
-                              onClick={() => {
-                                setNewTicketNumber(ticket.ticketNumber);
-                                setSelectedClientId(ticket.clientId);
-                                setShowInvoice(true);
-                              }}
-                              className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
-                            >
-                              Invoice
-                            </button>
-                          )}
+                          
+                          {/* Delete button */}
                           <button
-                            onClick={() => setEditingTicket(ticket.id)}
-                            className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                            onClick={() => handleDeleteTicket(ticket.id)}
+                            className="text-red-600 hover:text-red-800"
+                            title="Delete"
                           >
-                            Edit
+                            <Trash2 className="h-5 w-5" />
                           </button>
-                          <select
-                            value={ticket.status}
-                            onChange={(e) =>
-                              updateTicket(ticket.id, {
-                                status: e.target.value as 'pending' | 'in-progress' | 'completed',
-                              })
-                            }
-                            className="text-sm rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                          >
-                            <option value="pending">Pending</option>
-                            <option value="in-progress">In Progress</option>
-                            <option value="completed">Completed</option>
-                          </select>
                         </div>
                       </td>
                     </tr>
