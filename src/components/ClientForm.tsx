@@ -20,6 +20,7 @@ export default function ClientForm({ onSubmit, onCancel }: ClientFormProps) {
     e.preventDefault();
     const clients = useClientsStore.getState().clients;
     addClient(formData);
+    // Get the newly added client (it's the last one in the array)
     const newClient = useClientsStore.getState().clients[clients.length];
     onSubmit(newClient.id);
   };

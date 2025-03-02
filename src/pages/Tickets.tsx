@@ -56,8 +56,10 @@ export default function Tickets() {
   };
 
   const handleNewClient = (clientId: string) => {
+    // Find the client name to display in the search field
+    const clientName = clients.find(c => c.id === clientId)?.name || '';
     setSelectedClientId(clientId);
-    setClientSearch(clients.find(c => c.id === clientId)?.name || '');
+    setClientSearch(clientName);
     setIsAddingClient(false);
   };
 
