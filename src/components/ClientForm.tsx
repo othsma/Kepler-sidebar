@@ -18,11 +18,25 @@ export default function ClientForm({ onSubmit, onCancel }: ClientFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const clients = useClientsStore.getState().clients;
+    // Get the current clients array before adding the new client
+    const currentClients = useClientsStore.getState().clients;
+    
+    // Add the new client
     addClient(formData);
-    // Get the newly added client (it's the last one in the array)
-    const newClient = useClientsStore.getState().clients[clients.length];
-    onSubmit(newClient.id);
+    
+    // Get the updated clients array after adding the new client
+    const updatedClients = useClientsStore.getState().clients;
+    
+    // Find the newly added client (it should be the one that wasn't in the original array)
+    const newClient = updatedClients.find(client => 
+      !currentClients.some(c => c.id === client.id)
+    );
+    
+    if (newClient) {
+      onSubmit(newClient.id);
+    } else {
+      console.error("Failed to find newly created client");
+    }
   };
 
   return (

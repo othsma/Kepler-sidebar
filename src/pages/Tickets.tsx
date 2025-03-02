@@ -57,9 +57,19 @@ export default function Tickets() {
 
   const handleNewClient = (clientId: string) => {
     // Find the client name to display in the search field
-    const clientName = clients.find(c => c.id === clientId)?.name || '';
-    setSelectedClientId(clientId);
-    setClientSearch(clientName);
+    const client = clients.find(c => c.id === clientId);
+    if (client) {
+      setSelectedClientId(clientId);
+      setClientSearch(client.name);
+    } else {
+      // If client not found in the current state, fetch it directly from the store
+      const storeClients = useClientsStore.getState().clients;
+      const storeClient = storeClients.find(c => c.id === clientId);
+      if (storeClient) {
+        setSelectedClientId(clientId);
+        setClientSearch(storeClient.name);
+      }
+    }
     setIsAddingClient(false);
   };
 
