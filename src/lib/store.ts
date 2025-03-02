@@ -104,6 +104,12 @@ interface TicketSettings {
   tasks: string[];
 }
 
+// New interface for task with price
+export interface TaskWithPrice {
+  name: string;
+  price: number;
+}
+
 interface Ticket {
   id: string;
   ticketNumber: string;
@@ -112,6 +118,7 @@ interface Ticket {
   brand: string;
   model: string;
   tasks: string[];
+  taskPrices?: TaskWithPrice[]; // Add task prices array
   issue?: string;
   status: 'pending' | 'in-progress' | 'completed';
   cost: number;
@@ -157,6 +164,7 @@ const fakeTickets: Ticket[] = [
     brand: 'Apple',
     model: 'iPhone 14',
     tasks: ['Screen Replacement'],
+    taskPrices: [{ name: 'Screen Replacement', price: 150 }],
     issue: 'Cracked screen',
     status: 'in-progress',
     cost: 150,
@@ -172,6 +180,7 @@ const fakeTickets: Ticket[] = [
     brand: 'Samsung',
     model: 'Galaxy Tab S8',
     tasks: ['Battery Replacement'],
+    taskPrices: [{ name: 'Battery Replacement', price: 100 }],
     issue: 'Battery draining quickly',
     status: 'pending',
     cost: 100,
@@ -187,6 +196,7 @@ const fakeTickets: Ticket[] = [
     brand: 'Dell',
     model: 'XPS 13',
     tasks: ['Software Installation'],
+    taskPrices: [{ name: 'Software Installation', price: 50 }],
     issue: 'Operating system not booting',
     status: 'completed',
     cost: 50,

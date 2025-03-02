@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useThemeStore, useTicketsStore } from '../lib/store';
+import { useThemeStore, useTicketsStore, TaskWithPrice } from '../lib/store';
 import { Plus, Minus, DollarSign } from 'lucide-react';
 
 interface TicketFormProps {
@@ -12,16 +12,12 @@ interface TicketFormProps {
     brand: string;
     model: string;
     tasks: string[];
+    taskPrices?: TaskWithPrice[]; // Add task prices
     issue: string;
     cost: number;
     passcode: string;
     status: 'pending' | 'in-progress' | 'completed';
   };
-}
-
-interface TaskWithCost {
-  name: string;
-  cost: number;
 }
 
 export default function TicketForm({ clientId, onSubmit, onCancel, editingTicket, initialData }: TicketFormProps) {
@@ -35,24 +31,25 @@ export default function TicketForm({ clientId, onSubmit, onCancel, editingTicket
   const [newTaskInput, setNewTaskInput] = useState('');
   const [newTaskCost, setNewTaskCost] = useState(0);
   
-  // Convert initial tasks to task with cost objects
-  const initialTasksWithCost = initialData?.tasks.map(task => ({
-    name: task,
-    cost: initialData.cost / initialData.tasks.length // Distribute cost evenly for initial data
-  })) || [];
+  // Convert initial tasks to task with price objects
+  const initialTasksWithPrice = initialData?.taskPrices || 
+    initialData?.tasks.map(task => ({
+      name: task,
+      price: initialData.cost / initialData.tasks.length // Distribute cost evenly for initial data
+    })) || [];
 
   const [formData, setFormData] = useState({
     deviceType: initialData?.deviceType || '',
     brand: initialData?.brand || '',
     model: initialData?.model || '',
-    tasksWithCost: initialTasksWithCost,
+    tasksWithPrice: initialTasksWithPrice,
     issue: initialData?.issue || '',
     passcode: initialData?.passcode || '',
     status: initialData?.status || 'pending' as const,
   });
 
   // Calculate total cost from all tasks
-  const totalCost = formData.tasksWithCost.reduce((sum, task) => sum + task.cost, 0);
+  const totalCost = formData.tasksWithPrice.reduce((sum, task) => sum + task.price, 0);
 
   // Get most used tasks
   const [popularTasks, setPopularTasks] = useState<string[]>([]);
@@ -75,12 +72,13 @@ export default function TicketForm({ clientId, onSubmit, onCancel, editingTicket
     e.preventDefault();
     
     // Extract task names for the ticket
-    const tasks = formData.tasksWithCost.map(task => task.name);
+    const tasks = formData.tasksWithPrice.map(task => task.name);
     
     if (editingTicket) {
       updateTicket(editingTicket, { 
         ...formData, 
         tasks, 
+        taskPrices: formData.tasksWithPrice, // Save task prices
         cost: totalCost,
         clientId 
       });
@@ -94,6 +92,7 @@ export default function TicketForm({ clientId, onSubmit, onCancel, editingTicket
       const ticket = { 
         ...formData, 
         tasks,
+        taskPrices: formData.tasksWithPrice, // Save task prices
         cost: totalCost,
         clientId, 
         technicianId: '' 
@@ -105,29 +104,29 @@ export default function TicketForm({ clientId, onSubmit, onCancel, editingTicket
 
   const handleTaskToggle = (taskName: string) => {
     setFormData(prev => {
-      const taskExists = prev.tasksWithCost.some(t => t.name === taskName);
+      const taskExists = prev.tasksWithPrice.some(t => t.name === taskName);
       
       if (taskExists) {
         // Remove task
         return {
           ...prev,
-          tasksWithCost: prev.tasksWithCost.filter(t => t.name !== taskName)
+          tasksWithPrice: prev.tasksWithPrice.filter(t => t.name !== taskName)
         };
       } else {
         // Add task with default cost
         return {
           ...prev,
-          tasksWithCost: [...prev.tasksWithCost, { name: taskName, cost: 0 }]
+          tasksWithPrice: [...prev.tasksWithPrice, { name: taskName, price: 0 }]
         };
       }
     });
   };
 
-  const updateTaskCost = (taskName: string, cost: number) => {
+  const updateTaskPrice = (taskName: string, price: number) => {
     setFormData(prev => ({
       ...prev,
-      tasksWithCost: prev.tasksWithCost.map(task => 
-        task.name === taskName ? { ...task, cost } : task
+      tasksWithPrice: prev.tasksWithPrice.map(task => 
+        task.name === taskName ? { ...task, price } : task
       )
     }));
   };
@@ -159,7 +158,7 @@ export default function TicketForm({ clientId, onSubmit, onCancel, editingTicket
 
   const handleAddNewTask = () => {
     const value = newTaskInput.trim();
-    if (value && !formData.tasksWithCost.some(t => t.name === value)) {
+    if (value && !formData.tasksWithPrice.some(t => t.name === value)) {
       if (!settings.tasks.includes(value)) {
         addTask(value);
         // Update popular tasks to include the new task
@@ -172,7 +171,7 @@ export default function TicketForm({ clientId, onSubmit, onCancel, editingTicket
       // Add the new task with its cost
       setFormData(prev => ({
         ...prev,
-        tasksWithCost: [...prev.tasksWithCost, { name: value, cost: newTaskCost }]
+        tasksWithPrice: [...prev.tasksWithPrice, { name: value, price: newTaskCost }]
       }));
       
       setNewTaskInput('');
@@ -362,13 +361,13 @@ export default function TicketForm({ clientId, onSubmit, onCancel, editingTicket
               <label key={task} className="flex items-center space-x-2">
                 <input
                   type="checkbox"
-                  checked={formData.tasksWithCost.some(t => t.name === task)}
+                  checked={formData.tasksWithPrice.some(t => t.name === task)}
                   onChange={() => handleTaskToggle(task)}
                   className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
                 <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>
                   {task}
-                  {!popularTasks.includes(task) && formData.tasksWithCost.some(t => t.name === task) && (
+                  {!popularTasks.includes(task) && formData.tasksWithPrice.some(t => t.name === task) && (
                     <span className="ml-1 text-green-600">✓</span>
                   )}
                 </span>
@@ -412,13 +411,13 @@ export default function TicketForm({ clientId, onSubmit, onCancel, editingTicket
           </div>
           
           {/* Selected tasks with cost */}
-          {formData.tasksWithCost.length > 0 && (
+          {formData.tasksWithPrice.length > 0 && (
             <div className="mt-4">
               <h4 className={`text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 Selected Tasks
               </h4>
               <div className="space-y-2 border rounded-md p-3">
-                {formData.tasksWithCost.map((task) => (
+                {formData.tasksWithPrice.map((task) => (
                   <div key={task.name} className="flex items-center justify-between">
                     <div className="flex items-center">
                       <button
@@ -436,8 +435,8 @@ export default function TicketForm({ clientId, onSubmit, onCancel, editingTicket
                       <DollarSign className="h-4 w-4 text-gray-400" />
                       <input
                         type="number"
-                        value={task.cost}
-                        onChange={(e) => updateTaskCost(task.name, Number(e.target.value))}
+                        value={task.price}
+                        onChange={(e) => updateTaskPrice(task.name, Number(e.target.value))}
                         className="w-20 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                       />
                     </div>

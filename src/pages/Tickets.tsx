@@ -231,6 +231,12 @@ export default function Tickets() {
               {filteredTickets.length > 0 ? (
                 filteredTickets.map((ticket) => {
                   const client = clients.find((c) => c.id === ticket.clientId);
+                  
+                  // Display task prices if available
+                  const taskPriceDisplay = ticket.taskPrices ? 
+                    ticket.taskPrices.map(tp => `${tp.name} ($${tp.price})`).join(', ') :
+                    ticket.tasks.join(', ');
+                  
                   return (
                     <tr key={ticket.id} className={`hover:${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
@@ -246,7 +252,7 @@ export default function Tickets() {
                         {ticket.deviceType} - {ticket.brand}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-300 max-w-xs truncate">
-                        {ticket.tasks.join(', ')}
+                        {taskPriceDisplay}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                         ${ticket.cost}

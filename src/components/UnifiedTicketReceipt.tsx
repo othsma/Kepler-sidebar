@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useThemeStore, useClientsStore } from '../lib/store';
+import { useThemeStore, useClientsStore, useTicketsStore, TaskWithPrice } from '../lib/store';
 import { Printer, Mail, Download, X, FileText, Receipt } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import html2canvas from 'html2canvas';
@@ -12,6 +12,7 @@ interface UnifiedTicketReceiptProps {
     brand: string;
     model: string;
     tasks: string[];
+    taskPrices?: TaskWithPrice[]; // Add task prices
     cost: number;
     passcode?: string;
     createdAt: string;
@@ -133,12 +134,23 @@ export default function UnifiedTicketReceipt({
 
       <div className="my-2">
         <p className="font-bold">Services:</p>
-        {ticket.tasks.map((task, index) => (
-          <div key={index} className="flex justify-between text-sm">
-            <span>{task}</span>
-            <span>€{(ticket.cost / ticket.tasks.length).toFixed(2)}</span>
-          </div>
-        ))}
+        {ticket.taskPrices ? (
+          // Display tasks with their individual prices
+          ticket.taskPrices.map((task, index) => (
+            <div key={index} className="flex justify-between text-sm">
+              <span>{task.name}</span>
+              <span>€{task.price.toFixed(2)}</span>
+            </div>
+          ))
+        ) : (
+          // Fallback to evenly distributed prices if taskPrices not available
+          ticket.tasks.map((task, index) => (
+            <div key={index} className="flex justify-between text-sm">
+              <span>{task}</span>
+              <span>€{(ticket.cost / ticket.tasks.length).toFixed(2)}</span>
+            </div>
+          ))
+        )}
       </div>
 
       <div className="border-t border-dashed pt-2 my-2">
@@ -251,12 +263,23 @@ export default function UnifiedTicketReceipt({
             </tr>
           </thead>
           <tbody>
-            {ticket.tasks.map((task, index) => (
-              <tr key={index} className="border-b border-gray-200">
-                <td className="py-3 text-gray-800">{task}</td>
-                <td className="text-right py-3 text-gray-800">€{(ticket.cost / ticket.tasks.length).toFixed(2)}</td>
-              </tr>
-            ))}
+            {ticket.taskPrices ? (
+              // Display tasks with their individual prices
+              ticket.taskPrices.map((task, index) => (
+                <tr key={index} className="border-b border-gray-200">
+                  <td className="py-3 text-gray-800">{task.name}</td>
+                  <td className="text-right py-3 text-gray-800">€{task.price.toFixed(2)}</td>
+                </tr>
+              ))
+            ) : (
+              // Fallback to evenly distributed prices if taskPrices not available
+              ticket.tasks.map((task, index) => (
+                <tr key={index} className="border-b border-gray-200">
+                  <td className="py-3 text-gray-800">{task}</td>
+                  <td className="text-right py-3 text-gray-800">€{(ticket.cost / ticket.tasks.length).toFixed(2)}</td>
+                </tr>
+              ))
+            )}
           </tbody>
           <tfoot>
             <tr>
